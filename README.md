@@ -18,17 +18,21 @@ python hilbert_envelope.py --save envelope.png
 By default the script reads the path baked into `DEFAULT_CSV`. Override with
 `--csv path/to/other.csv`, or pass `--show` to open the plot interactively.
 
-## Parametric sweep (L1 = 50–130 nH)
+## Parametric sweeps (L1 = 50–130 nH), per circuit
 
-`sweep_envelopes.py` runs the same envelope analysis across an ADS L1 sweep
-(`S02LSweep50130R2.csv` — 81 values from 50 to 130 nH in 1 nH steps):
+`sweep_envelopes.py` runs the envelope analysis across an ADS L1 sweep (81
+values, 50–130 nH in 1 nH steps) and files the plots under a per-circuit
+subfolder, auto-detected from the CSV name (e.g. `S02`, `S04`):
 
 ```bash
-python sweep_envelopes.py
+python sweep_envelopes.py --csv .../S02LSweep50130R2.csv   # -> sweep_all/S02/, sweep_every10nH/S02/
+python sweep_envelopes.py --csv .../S04LSweep50130R2.csv   # -> sweep_all/S04/, sweep_every10nH/S04/
 ```
 
-- `sweep_all/` — one plot per L1 value (`L1_050nH.png` … `L1_130nH.png`, 81 total)
-- `sweep_every10nH/` — only the 10 nH increments (`step10_L1_050nH.png` … `step10_L1_130nH.png`, 9 total)
+- `sweep_all/<circuit>/` — one plot per L1 value (`L1_050nH.png` … `L1_130nH.png`, 81 each)
+- `sweep_every10nH/<circuit>/` — only the 10 nH increments (`step10_L1_050nH.png` … `step10_L1_130nH.png`, 9 each)
+
+Add another circuit by pointing `--csv` at its sweep export; override the tag with `--label`. Currently included: **S02**, **S04**.
 
 ## Realistic lab-acquisition pipeline
 
@@ -60,4 +64,4 @@ envelope to ~0.5 % of full span.
 - `lab_pipeline.py` — realistic scope-acquisition + envelope pipeline
 - `requirements.txt` — `numpy`, `scipy`, `matplotlib`
 - `envelope.png`, `lab_pipeline.png` — generated plots (committed for reference)
-- `sweep_all/`, `sweep_every10nH/` — generated sweep plots
+- `sweep_all/<circuit>/`, `sweep_every10nH/<circuit>/` — generated sweep plots (S02, S04)

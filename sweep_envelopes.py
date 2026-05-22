@@ -6,6 +6,7 @@ style as hilbert_envelope.py.
 """
 
 import argparse
+import re
 from collections import OrderedDict
 from pathlib import Path
 
@@ -39,7 +40,18 @@ def load_sweep_csv(path: str) -> "OrderedDict[float, tuple[np.ndarray, np.ndarra
     return OrderedDict((k, dedup_time(np.asarray(t), np.asarray(v))) for k, (t, v) in sweeps.items())
 
 
-def plot_envelope(l1: float, t: np.ndarray, v: np.ndarray, out_path: Path) -> None:
+def circuit_label(csv_path: str, override: str | None) -> str:
+    """Circuit tag (e.g. 'S02', 'S04') used for the subfolder and plot title.
+
+    Defaults to the leading S-number of the CSV filename (S02LSweep... -> S02).
+    """
+    if override:
+        return override
+    m = re.match(r"(S\d+)", Path(csv_path).stem)
+    return m.group(1) if m else "signal"
+
+
+def plot_envelope(l1: float, t: np.ndarray, v: np.ndarray, out_path: Path, label: str) -> None:
     env = hilbert_envelope(v)
     t_ns = t * 1e9
     fig, ax = plt.subplots(figsize=(12, 5))
@@ -48,7 +60,7 @@ def plot_envelope(l1: float, t: np.ndarray, v: np.ndarray, out_path: Path) -> No
     ax.plot(t_ns, -env, label="Envelope (−)", color="#d62728", linewidth=1.4, linestyle="--")
     ax.set_xlabel("Time (ns)")
     ax.set_ylabel("Voltage (V)")
-    ax.set_title(f"Hilbert envelope of S02 Vout — L1 = {l1:g} nH")
+    ax.set_title(f"Hilbert envelope of {label} Vout — L1 = {l1:g} nH")
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper right")
     fig.tight_layout()
@@ -62,24 +74,26 @@ def main() -> None:
     parser.add_argument("--all-dir", default="sweep_all")
     parser.add_argument("--step-dir", default="sweep_every10nH")
     parser.add_argument("--step", type=int, default=10, help="nH increment for the second folder")
+    parser.add_argument("--label", default=None, help="circuit tag/subfolder (default: S-number of CSV)")
     args = parser.parse_args()
 
+    label = circuit_label(args.csv, args.label)
     sweeps = load_sweep_csv(args.csv)
-    all_dir = Path(args.all_dir)
-    step_dir = Path(args.step_dir)
-    all_dir.mkdir(exist_ok=True)
-    step_dir.mkdir(exist_ok=True)
+    all_dir = Path(args.all_dir) / label
+    step_dir = Path(args.step_dir) / label
+    all_dir.mkdir(parents=True, exist_ok=True)
+    step_dir.mkdir(parents=True, exist_ok=True)
 
     vals = list(sweeps)
-    print(f"Loaded {len(vals)} sweeps: {min(vals):g}..{max(vals):g} nH, "
+    print(f"[{label}] Loaded {len(vals)} sweeps: {min(vals):g}..{max(vals):g} nH, "
           f"{len(sweeps[vals[0]][0])} pts each")
 
     n_step = 0
     for l1, (t, v) in sweeps.items():
         name = f"L1_{int(round(l1)):03d}nH.png"
-        plot_envelope(l1, t, v, all_dir / name)
+        plot_envelope(l1, t, v, all_dir / name, label)
         if int(round(l1)) % args.step == 0:
-            plot_envelope(l1, t, v, step_dir / f"step{args.step}_{name}")
+            plot_envelope(l1, t, v, step_dir / f"step{args.step}_{name}", label)
             n_step += 1
     print(f"Wrote {len(vals)} plots -> {all_dir}/  and  {n_step} plots -> {step_dir}/")
 
