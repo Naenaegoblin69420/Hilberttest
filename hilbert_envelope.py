@@ -43,6 +43,20 @@ def parse_value(text: str, units: dict) -> float:
     return value * units[unit]
 
 
+def hilbert_envelope(v: np.ndarray, pad_frac: float = 0.25) -> np.ndarray:
+    """|analytic signal| with reflection padding at both ends.
+
+    scipy.signal.hilbert is FFT-based and treats the signal as periodic, so a
+    discontinuity between v[0] and v[-1] produces a Gibbs-style envelope spike
+    at the boundaries. Padding with mirrored copies of the signal makes the
+    extended sequence smooth at the wrap-around and removes the artifact.
+    """
+    n = len(v)
+    p = int(n * pad_frac)
+    padded = np.concatenate([v[1:p + 1][::-1], v, v[-p - 1:-1][::-1]])
+    return np.abs(hilbert(padded))[p:p + n]
+
+
 def load_csv(path: str) -> tuple[np.ndarray, np.ndarray]:
     """Load an ADS-style time-domain CSV.
 
@@ -77,7 +91,7 @@ def main() -> None:
     print(f"  Time: {t[0]:.3e} s  ..  {t[-1]:.3e} s")
     print(f"  Vout: {v.min():+.3f} V  ..  {v.max():+.3f} V")
 
-    envelope = np.abs(hilbert(v))
+    envelope = hilbert_envelope(v)
 
     t_ns = t * 1e9
     fig, ax = plt.subplots(figsize=(12, 5))
