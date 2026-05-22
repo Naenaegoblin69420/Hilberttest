@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from hilbert_envelope import (
-    NUM_PATTERN, TIME_UNITS, VOLT_UNITS, hilbert_envelope, parse_value,
+    NUM_PATTERN, TIME_UNITS, VOLT_UNITS, dedup_time, hilbert_envelope, parse_value,
 )
 
 DEFAULT_CSV = r"C:\Users\angel\OneDrive\Code\ADS workspaces\SharpTestbenchV2\S02LSweep50130R2.csv"
@@ -36,7 +36,7 @@ def load_sweep_csv(path: str) -> "OrderedDict[float, tuple[np.ndarray, np.ndarra
         t, v = sweeps.setdefault(l1, ([], []))
         t.append(parse_value(parts[1], TIME_UNITS))
         v.append(parse_value(parts[2], VOLT_UNITS))
-    return OrderedDict((k, (np.asarray(t), np.asarray(v))) for k, (t, v) in sweeps.items())
+    return OrderedDict((k, dedup_time(np.asarray(t), np.asarray(v))) for k, (t, v) in sweeps.items())
 
 
 def plot_envelope(l1: float, t: np.ndarray, v: np.ndarray, out_path: Path) -> None:

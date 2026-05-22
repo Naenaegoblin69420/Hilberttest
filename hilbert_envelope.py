@@ -57,6 +57,20 @@ def hilbert_envelope(v: np.ndarray, pad_frac: float = 0.25) -> np.ndarray:
     return np.abs(hilbert(padded))[p:p + n]
 
 
+def dedup_time(t: np.ndarray, v: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Drop rows sharing a timestamp, keeping the first per unique time.
+
+    ADS flushes several samples at the same checkpoint time (e.g. 100/181 ns),
+    which a real oscilloscope's fixed sample clock never does. Left in, those
+    zero-dt rows act as inserted flat samples and make the FFT-Hilbert envelope
+    spike; they also break the monotonic-time requirement of np.interp.
+    """
+    t = np.asarray(t)
+    v = np.asarray(v)
+    _, idx = np.unique(t, return_index=True)
+    return t[idx], v[idx]
+
+
 def load_csv(path: str) -> tuple[np.ndarray, np.ndarray]:
     """Load an ADS-style time-domain CSV.
 
@@ -76,7 +90,7 @@ def load_csv(path: str) -> tuple[np.ndarray, np.ndarray]:
             continue
         time_vals.append(parse_value(first, TIME_UNITS))
         vout_vals.append(parse_value(second, VOLT_UNITS))
-    return np.asarray(time_vals), np.asarray(vout_vals)
+    return dedup_time(np.asarray(time_vals), np.asarray(vout_vals))
 
 
 def main() -> None:

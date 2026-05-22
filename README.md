@@ -30,10 +30,34 @@ python sweep_envelopes.py
 - `sweep_all/` — one plot per L1 value (`L1_050nH.png` … `L1_130nH.png`, 81 total)
 - `sweep_every10nH/` — only the 10 nH increments (`step10_L1_050nH.png` … `step10_L1_130nH.png`, 9 total)
 
+## Realistic lab-acquisition pipeline
+
+![Lab acquisition pipeline](lab_pipeline.png)
+
+`lab_pipeline.py` emulates what you'd actually measure on the bench — probe +
+oscilloscope, not an ideal simulation — and then extracts the envelope:
+
+```bash
+python lab_pipeline.py --snr 30 --bits 8 --fs 10e9 --scope-bw 2e9
+```
+
+Stages: de-dup timestamps → resample to a uniform scope clock → band-limit to
+the scope's analog bandwidth → add Gaussian noise at a target SNR → quantize to
+an N-bit ADC → band-pass around the carrier → `|Hilbert|` envelope. The
+band-pass is what removes the carrier's harmonics and edge sharpness, so the
+recovered envelope stays smooth; at 30 dB SNR / 8-bit it tracks the ideal
+envelope to ~0.5 % of full span.
+
+> Note: ADS exports a few duplicate-timestamp rows at checkpoint times
+> (100/181 ns); a real scope's fixed sample clock never does this. The loaders
+> now drop them (`dedup_time`), which also removes the envelope spikes those
+> rows caused.
+
 ## Files
 
 - `hilbert_envelope.py` — loader + Hilbert envelope plotter (single trace)
 - `sweep_envelopes.py` — batch envelope plots across an L1 parametric sweep
+- `lab_pipeline.py` — realistic scope-acquisition + envelope pipeline
 - `requirements.txt` — `numpy`, `scipy`, `matplotlib`
-- `envelope.png` — generated plot (committed for reference)
+- `envelope.png`, `lab_pipeline.png` — generated plots (committed for reference)
 - `sweep_all/`, `sweep_every10nH/` — generated sweep plots
